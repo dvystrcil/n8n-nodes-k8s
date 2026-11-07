@@ -1,0 +1,483 @@
+{
+  "comment": "node scripts/audit-deps.mjs --update; review the diff before committing",
+  "packages": {
+    "@jsep-plugin/assignment": {
+      "version": "1.4.0",
+      "license": "MIT",
+      "capabilities": {}
+    },
+    "@jsep-plugin/regex": {
+      "version": "1.1.0",
+      "license": "MIT",
+      "capabilities": {}
+    },
+    "@kubernetes/client-node": {
+      "version": "2.0.2",
+      "license": "Apache-2.0",
+      "capabilities": {
+        "env": [
+          "dist/config.js",
+          "dist/exec_auth.js",
+          "dist/exec_credential_policy.js"
+        ],
+        "exec": [
+          "dist/azure_auth.js",
+          "dist/config.js",
+          "dist/exec_auth.js",
+          "dist/gcp_auth.js"
+        ],
+        "fs": [
+          "dist/config.js",
+          "dist/config_types.js",
+          "dist/exec_credential_policy.js",
+          "dist/file_auth.js"
+        ],
+        "network": [
+          "dist/config.js",
+          "dist/gen/http/isomorphic-fetch.js",
+          "dist/health.js",
+          "dist/log.js",
+          "dist/metrics.js",
+          "dist/oidc_auth.js",
+          "dist/proto-client.js",
+          "dist/watch.js",
+          "dist/web-socket-handler.js"
+        ]
+      }
+    },
+    "@types/js-yaml": {
+      "version": "4.0.9",
+      "license": "MIT",
+      "capabilities": {}
+    },
+    "@types/node": {
+      "version": "26.6.6",
+      "license": "MIT",
+      "capabilities": {}
+    },
+    "@types/stream-buffers": {
+      "version": "3.0.8",
+      "license": "MIT",
+      "capabilities": {}
+    },
+    "argparse": {
+      "version": "3.0.4",
+      "license": "PSF-2.0",
+      "capabilities": {
+        "env": [
+          "lib/_colorize.js",
+          "lib/argparse.js"
+        ],
+        "fs": [
+          "lib/argparse.js"
+        ]
+      }
+    },
+    "asynckit": {
+      "version": "0.4.0",
+      "license": "MIT",
+      "capabilities": {}
+    },
+    "b4a": {
+      "version": "1.9.0",
+      "license": "Apache-2.0",
+      "capabilities": {}
+    },
+    "bare-buffer": {
+      "version": "3.7.1",
+      "license": "Apache-2.0",
+      "capabilities": {}
+    },
+    "bare-events": {
+      "version": "2.9.2",
+      "license": "Apache-2.0",
+      "capabilities": {}
+    },
+    "bare-fs": {
+      "version": "4.8.4",
+      "license": "Apache-2.0",
+      "capabilities": {}
+    },
+    "bare-path": {
+      "version": "3.1.2",
+      "license": "Apache-2.0",
+      "capabilities": {}
+    },
+    "bare-stream": {
+      "version": "2.13.4",
+      "license": "Apache-2.0",
+      "capabilities": {}
+    },
+    "bare-url": {
+      "version": "2.5.6",
+      "license": "Apache-2.0",
+      "capabilities": {}
+    },
+    "call-bind-apply-helpers": {
+      "version": "1.0.2",
+      "license": "MIT",
+      "capabilities": {}
+    },
+    "combined-stream": {
+      "version": "1.0.8",
+      "license": "MIT",
+      "capabilities": {}
+    },
+    "debug": {
+      "version": "4.4.3",
+      "license": "MIT",
+      "capabilities": {
+        "env": [
+          "src/browser.js",
+          "src/node.js"
+        ]
+      }
+    },
+    "delayed-stream": {
+      "version": "1.0.0",
+      "license": "MIT",
+      "capabilities": {}
+    },
+    "dunder-proto": {
+      "version": "1.0.1",
+      "license": "MIT",
+      "capabilities": {}
+    },
+    "end-of-stream": {
+      "version": "1.4.5",
+      "license": "MIT",
+      "capabilities": {}
+    },
+    "es-define-property": {
+      "version": "1.0.1",
+      "license": "MIT",
+      "capabilities": {}
+    },
+    "es-errors": {
+      "version": "1.3.0",
+      "license": "MIT",
+      "capabilities": {}
+    },
+    "es-object-atoms": {
+      "version": "1.1.2",
+      "license": "MIT",
+      "capabilities": {}
+    },
+    "es-set-tostringtag": {
+      "version": "2.1.0",
+      "license": "MIT",
+      "capabilities": {}
+    },
+    "events-universal": {
+      "version": "1.0.1",
+      "license": "Apache-2.0",
+      "capabilities": {}
+    },
+    "fast-fifo": {
+      "version": "1.3.2",
+      "license": "MIT",
+      "capabilities": {}
+    },
+    "form-data": {
+      "version": "4.0.6",
+      "license": "MIT",
+      "capabilities": {
+        "fs": [
+          "lib/form_data.js"
+        ],
+        "network": [
+          "lib/form_data.js"
+        ]
+      }
+    },
+    "function-bind": {
+      "version": "1.1.2",
+      "license": "MIT",
+      "capabilities": {}
+    },
+    "get-intrinsic": {
+      "version": "1.3.0",
+      "license": "MIT",
+      "capabilities": {}
+    },
+    "get-proto": {
+      "version": "1.0.1",
+      "license": "MIT",
+      "capabilities": {}
+    },
+    "gopd": {
+      "version": "1.2.0",
+      "license": "MIT",
+      "capabilities": {}
+    },
+    "has-symbols": {
+      "version": "1.1.0",
+      "license": "MIT",
+      "capabilities": {}
+    },
+    "has-tostringtag": {
+      "version": "1.0.2",
+      "license": "MIT",
+      "capabilities": {}
+    },
+    "hasown": {
+      "version": "2.0.4",
+      "license": "MIT",
+      "capabilities": {}
+    },
+    "hpagent": {
+      "version": "1.2.0",
+      "license": "MIT",
+      "capabilities": {
+        "fs": [
+          "test/utils.js"
+        ],
+        "network": [
+          "index.js",
+          "test/hang-socket/http.js",
+          "test/hang-socket/https.js",
+          "test/http-http.test.js",
+          "test/http-https.test.js",
+          "test/https-http.test.js",
+          "test/https-https.test.js",
+          "test/node-fetch.test.js",
+          "test/utils.js"
+        ]
+      }
+    },
+    "ip-address": {
+      "version": "10.7.6",
+      "license": "MIT",
+      "capabilities": {}
+    },
+    "isomorphic-ws": {
+      "version": "5.0.0",
+      "license": "MIT",
+      "capabilities": {
+        "network": [
+          "node.js"
+        ]
+      }
+    },
+    "jose": {
+      "version": "6.2.15",
+      "license": "MIT",
+      "capabilities": {}
+    },
+    "js-yaml": {
+      "version": "5.5.0",
+      "license": "MIT",
+      "capabilities": {
+        "fs": [
+          "bin/js-yaml.mjs"
+        ]
+      }
+    },
+    "jsep": {
+      "version": "1.6.0",
+      "license": "MIT",
+      "capabilities": {}
+    },
+    "jsonpath-plus": {
+      "version": "10.4.0",
+      "license": "MIT",
+      "capabilities": {
+        "exec": [
+          "dist/index-browser-esm.js",
+          "dist/index-browser-esm.min.js",
+          "dist/index-browser-umd.cjs",
+          "dist/index-browser-umd.min.cjs",
+          "dist/index-node-cjs.cjs",
+          "dist/index-node-esm.js",
+          "src/jsonpath-browser.js",
+          "src/jsonpath-node.js"
+        ],
+        "fs": [
+          "bin/jsonpath-cli.js"
+        ]
+      }
+    },
+    "math-intrinsics": {
+      "version": "1.1.0",
+      "license": "MIT",
+      "capabilities": {}
+    },
+    "mime-db": {
+      "version": "1.52.0",
+      "license": "MIT",
+      "capabilities": {}
+    },
+    "mime-types": {
+      "version": "2.1.35",
+      "license": "MIT",
+      "capabilities": {}
+    },
+    "ms": {
+      "version": "2.1.3",
+      "license": "MIT",
+      "capabilities": {}
+    },
+    "oauth4webapi": {
+      "version": "3.8.8",
+      "license": "MIT",
+      "capabilities": {}
+    },
+    "once": {
+      "version": "1.4.0",
+      "license": "ISC",
+      "capabilities": {}
+    },
+    "openid-client": {
+      "version": "6.8.9",
+      "license": "MIT",
+      "capabilities": {}
+    },
+    "pump": {
+      "version": "3.0.4",
+      "license": "MIT",
+      "capabilities": {
+        "fs": [
+          "index.js",
+          "test-node.js"
+        ]
+      }
+    },
+    "rfc4648": {
+      "version": "1.5.4",
+      "license": "MIT",
+      "capabilities": {}
+    },
+    "smart-buffer": {
+      "version": "4.2.0",
+      "license": "MIT",
+      "capabilities": {}
+    },
+    "socks": {
+      "version": "2.8.10",
+      "license": "MIT",
+      "capabilities": {
+        "network": [
+          "build/client/socksclient.js",
+          "build/common/helpers.js"
+        ]
+      }
+    },
+    "socks-proxy-agent": {
+      "version": "10.1.0",
+      "license": "MIT",
+      "capabilities": {
+        "network": [
+          "dist/index.js"
+        ]
+      }
+    },
+    "socks-proxy-agent/node_modules/agent-base": {
+      "version": "9.0.0",
+      "license": "MIT",
+      "capabilities": {
+        "network": [
+          "dist/helpers.js",
+          "dist/index.js"
+        ]
+      }
+    },
+    "stream-buffers": {
+      "version": "3.0.3",
+      "license": "Unlicense",
+      "capabilities": {}
+    },
+    "streamx": {
+      "version": "2.28.1",
+      "license": "MIT",
+      "capabilities": {}
+    },
+    "tar-fs": {
+      "version": "3.1.3",
+      "license": "MIT",
+      "capabilities": {
+        "fs": [
+          "index.js"
+        ]
+      }
+    },
+    "tar-stream": {
+      "version": "3.2.2",
+      "license": "MIT",
+      "capabilities": {
+        "fs": [
+          "constants.js"
+        ]
+      }
+    },
+    "teex": {
+      "version": "1.0.1",
+      "license": "MIT",
+      "capabilities": {}
+    },
+    "text-decoder": {
+      "version": "1.2.7",
+      "license": "Apache-2.0",
+      "capabilities": {}
+    },
+    "undici": {
+      "version": "8.12.4",
+      "license": "MIT",
+      "capabilities": {
+        "env": [
+          "lib/dispatcher/client-h1.js",
+          "lib/dispatcher/env-http-proxy-agent.js",
+          "lib/dispatcher/parser-h1.js",
+          "lib/mock/pending-interceptors-formatter.js"
+        ],
+        "exec": [
+          "lib/web/webidl/index.js"
+        ],
+        "fs": [
+          "lib/mock/snapshot-recorder.js",
+          "scripts/strip-comments.js"
+        ],
+        "network": [
+          "index-fetch.js",
+          "index.js",
+          "lib/core/connect.js",
+          "lib/core/socks5-utils.js",
+          "lib/core/util.js",
+          "lib/dispatcher/client-h1.js",
+          "lib/dispatcher/client-h2.js",
+          "lib/dispatcher/client.js",
+          "lib/dispatcher/socks5-proxy-agent.js",
+          "lib/interceptor/decompress.js",
+          "lib/interceptor/dns.js",
+          "lib/mock/mock-utils.js",
+          "lib/web/fetch/index.js",
+          "lib/web/websocket/sender.js"
+        ]
+      }
+    },
+    "undici-types": {
+      "version": "8.9.0",
+      "license": "MIT",
+      "capabilities": {}
+    },
+    "wrappy": {
+      "version": "1.0.2",
+      "license": "ISC",
+      "capabilities": {}
+    },
+    "ws": {
+      "version": "8.22.1",
+      "license": "MIT",
+      "capabilities": {
+        "env": [
+          "lib/buffer-util.js",
+          "lib/validation.js"
+        ],
+        "network": [
+          "lib/buffer-util.js",
+          "lib/websocket-server.js",
+          "lib/websocket.js"
+        ]
+      }
+    }
+  }
+}

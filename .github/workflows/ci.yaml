@@ -1,21 +1,90 @@
-name: Node.js CI
+# Tests for every PR and push. Runs on GitHub-hosted runners ON PURPOSE:
+# this repo is public, so a pull request from a fork runs untrusted code, and
+# that must never reach a self-hosted runner inside the cluster. Nothing here
+# needs a secret or the cluster. The Harbor image build (build.yaml) runs on
+# the self-hosted runner, and only for pushes to main.
+name: ci
 
 on:
-  push:
-    branches:
-      - "main"
   pull_request:
-    branches:
-      - "main"
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
 
 jobs:
   test:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
-    - uses: actions/checkout@v4
-    - uses: actions/setup-node@v4
-      with:
-        node-version: '22.x'
-    - run: npm install
-    - run: npm run build
-    - run: npm run lint
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '26.12.1'   # = the live n8n's Node
+      # npm ci: exactly the lockfile (integrity-checked), no install scripts.
+      - run: npm ci --ignore-scripts --no-audit --no-fund
+      - run: npm run typecheck
+      - name: Unit tests (against the built dist/)
+        run: |
+          set -o pipefail
+          npm test 2>&1 | tee test.out
+          grep -Eq '^ℹ fail 0$' test.out
+          grep -Eq '^ℹ pass [1-9][0-9]*$' test.out
+      # Dependency gate (fail-closed): the shipped tree must match
+      # deps-baseline.json exactly. A dependency bump fails here until it is
+      # re-baselined with `npm run audit:deps -- --update` in the same PR,
+      # which puts the capability diff in front of the reviewer. Audits the
+      # production tree only, as shipped.
+      - name: Dependency gate (network/exec/fs/env, licences, install scripts, description lint)
+        run: |
+          set -o pipefail
+          rm -rf node_modules && npm ci --omit=dev --ignore-scripts --no-audit --no-fund
+          node scripts/audit-deps.mjs | tee audit.out
+          grep -qx 'DEPS-AUDIT-OK' audit.out
+
+  mutation:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '26.12.1'
+      - run: npm ci --ignore-scripts --no-audit --no-fund
+      # Fails under the break threshold in stryker.config.json.
+      - name: Mutation test (Stryker)
+        run: |
+          set -o pipefail
+          npx stryker run 2>&1 | tee mutation.out
+          grep -q 'is greater than or equal to break threshold' mutation.out
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: mutation-report
+          path: reports/mutation/
+
+  e2e:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+      - name: Build the node-only image
+        run: docker build -t n8n-nodes-k8s:ci .
+      - name: Install kind
+        run: |
+          curl -fsSLo kind https://kind.sigs.k8s.io/dl/v0.33.0/kind-linux-amd64
+          chmod +x kind && sudo mv kind /usr/local/bin/kind
+      - name: Create a kind cluster
+        run: kind create cluster --name e2e --image kindest/node:v1.36.4 --kubeconfig "$RUNNER_TEMP/kind.kubeconfig" --wait 120s
+      # Stock n8n with the image's files in N8N_CUSTOM_EXTENSIONS runs real
+      # workflows against a narrow Role and an admission policy.
+      - name: End to end (stock n8n, kind, minted token, verified TLS)
+        run: |
+          set -o pipefail
+          node test/e2e/e2e.mjs --image n8n-nodes-k8s:ci --cluster e2e --kubeconfig "$RUNNER_TEMP/kind.kubeconfig" | tee e2e.out
+          grep -qx 'E2E-OK' e2e.out
+      - name: Delete the kind cluster
+        if: always()
+        run: kind delete cluster --name e2e --kubeconfig "$RUNNER_TEMP/kind.kubeconfig"

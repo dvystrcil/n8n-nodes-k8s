@@ -1,0 +1,165 @@
+# Build the node-only image into Harbor, on pushes to main only.
+#
+# Runs on this repo's own self-hosted ARC scale set (n8n-nodes-k8s-runner,
+# dvystrcil/argocd-projects arc/arc-build-runners.yaml), because Harbor is
+# reached in-cluster. NEVER on pull_request: the repo is public, and PR code
+# from a fork must not run in the cluster (ci.yaml covers PRs on GitHub's
+# runners).
+#
+# Same layers as the fleet: push :dev + :sha-<sha>, then release-action cuts
+# the next release (vX.Y.Z git tag), and docker-release.yaml promotes :dev to
+# X.Y.Z (no `v` on image tags).
+#
+# Prerequisites (repo settings, not in git): INFISICAL_CLIENT_ID and
+# INFISICAL_CLIENT_SECRET repo secrets; the CICD GitHub App and the ARC App
+# installed on this repo.
+
+name: build
+
+on:
+  push:
+    branches: [main]
+    paths-ignore:
+      - '*.md'
+      - 'LICENSE.md'
+  workflow_dispatch:
+
+env:
+  INTERNAL_REGISTRY: harbor-core.harbor.svc.cluster.local
+  PROJECT: ai
+  IMAGE_NAME: n8n-nodes-k8s
+
+jobs:
+  build:
+    runs-on: n8n-nodes-k8s-runner
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v7
+
+      # One named secret per step, never the whole store.
+      - name: Fetch the Harbor username
+        uses: Infisical/secrets-action@v1.0.18
+        with:
+          client-id: ${{ secrets.INFISICAL_CLIENT_ID }}
+          client-secret: ${{ secrets.INFISICAL_CLIENT_SECRET }}
+          env-slug: prod
+          project-slug: homelab-bz-gt
+          secret-path: /
+          secret-name: HB_USERNAME
+          export-type: env
+          domain: http://infisical-infisical-standalone-infisical.infisical.svc.cluster.local:8080
+
+      - name: Fetch the Harbor password
+        uses: Infisical/secrets-action@v1.0.18
+        with:
+          client-id: ${{ secrets.INFISICAL_CLIENT_ID }}
+          client-secret: ${{ secrets.INFISICAL_CLIENT_SECRET }}
+          env-slug: prod
+          project-slug: homelab-bz-gt
+          secret-path: /
+          secret-name: HB_PASSWORD
+          export-type: env
+          domain: http://infisical-infisical-standalone-infisical.infisical.svc.cluster.local:8080
+
+      - name: Assert every scoped secret arrived
+        run: |
+          for v in HB_USERNAME HB_PASSWORD; do
+            [ -n "${!v}" ] || { echo "::error::$v not fetched — renamed in Infisical?"; exit 1; }
+          done
+
+      - name: Log in to Harbor (internal)
+        uses: docker/login-action@v4
+        with:
+          registry: ${{ env.INTERNAL_REGISTRY }}
+          username: ${{ env.HB_USERNAME }}
+          password: ${{ env.HB_PASSWORD }}
+
+      - uses: docker/setup-buildx-action@v4
+        with:
+          buildkitd-config-inline: |
+            [registry."harbor-core.harbor.svc.cluster.local"]
+              ca=["/etc/ssl/certs/ca-certificates.crt"]
+
+      # The Dockerfile runs the dependency gate on the exact tree it ships,
+      # so a tree that does not match deps-baseline.json cannot be pushed.
+      - name: Build + push (dev image)
+        env:
+          BUILDKIT_PROGRESS: plain
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          platforms: linux/amd64
+          push: true
+          tags: |
+            ${{ env.INTERNAL_REGISTRY }}/${{ env.PROJECT }}/${{ env.IMAGE_NAME }}:dev
+            ${{ env.INTERNAL_REGISTRY }}/${{ env.PROJECT }}/${{ env.IMAGE_NAME }}:sha-${{ github.sha }}
+
+      # The pushed artifact is what ships: pull it back, let it copy itself
+      # into an empty volume (as the init container does), and check the files.
+      - name: Assert the pushed image installs the node
+        run: |
+          set -euo pipefail
+          IMG="${INTERNAL_REGISTRY}/${PROJECT}/${IMAGE_NAME}:sha-${GITHUB_SHA}"
+          vol=n8n-nodes-k8s-assert-$GITHUB_RUN_ID
+          docker volume create "$vol" >/dev/null
+          trap 'docker volume rm "$vol" >/dev/null' EXIT
+          docker run --rm --user 0 -v "$vol":/custom --entrypoint chown "$IMG" 1000:1000 /custom
+          docker run --rm -v "$vol":/custom "$IMG" | tee copy.out
+          grep -qx 'n8n-nodes-k8s copied to /custom' copy.out
+          docker run --rm -v "$vol":/custom --entrypoint sh "$IMG" -c \
+            'p=/custom/node_modules/@dvystrcil/n8n-nodes-k8s; grep -q "\"@kubernetes/client-node\": \"2.0.2\"" $p/package.json && test -s $p/node_modules/@kubernetes/client-node/package.json && ! test -e $p/node_modules/typescript'
+
+  release:
+    needs: build
+    runs-on: n8n-nodes-k8s-runner
+    permissions:
+      contents: read
+    steps:
+      - name: Fetch the CICD App client id
+        uses: Infisical/secrets-action@v1.0.18
+        with:
+          client-id: ${{ secrets.INFISICAL_CLIENT_ID }}
+          client-secret: ${{ secrets.INFISICAL_CLIENT_SECRET }}
+          env-slug: prod
+          project-slug: homelab-bz-gt
+          secret-path: /
+          secret-name: CICD_APP_CLIENT_ID
+          export-type: env
+          domain: http://infisical-infisical-standalone-infisical.infisical.svc.cluster.local:8080
+
+      - name: Fetch the CICD App private key
+        uses: Infisical/secrets-action@v1.0.18
+        with:
+          client-id: ${{ secrets.INFISICAL_CLIENT_ID }}
+          client-secret: ${{ secrets.INFISICAL_CLIENT_SECRET }}
+          env-slug: prod
+          project-slug: homelab-bz-gt
+          secret-path: /
+          secret-name: CICD_APP_PRIVATE_KEY
+          export-type: env
+          domain: http://infisical-infisical-standalone-infisical.infisical.svc.cluster.local:8080
+
+      - name: Assert every scoped secret arrived
+        run: |
+          for v in CICD_APP_CLIENT_ID CICD_APP_PRIVATE_KEY; do
+            [ -n "${!v}" ] || { echo "::error::$v not fetched — renamed in Infisical?"; exit 1; }
+          done
+
+      - uses: actions/create-github-app-token@v3
+        id: app-token
+        with:
+          client-id: ${{ env.CICD_APP_CLIENT_ID }}
+          private-key: ${{ env.CICD_APP_PRIVATE_KEY }}
+          owner: ${{ github.repository_owner }}
+          repositories: n8n-nodes-k8s
+
+      - name: Create GitHub release
+        # Publishing fires docker-release.yaml.
+        uses: dvystrcil/release-action@v0.2.1
+        with:
+          token: ${{ steps.app-token.outputs.token }}
+          # The fork's first release is v0.3.0 (above upstream's 0.2.0),
+          # then minor bumps.
+          initial-version: v0.2.0
+          bump: minor
