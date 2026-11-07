@@ -106,7 +106,7 @@ These always fail, with or without `--update`:
 
 ## CI
 
-- `ci.yaml`: test, mutation, dependency gate, and the kind end-to-end test. These run on **GitHub-hosted runners**, including for pull requests from forks.
+- `ci.yaml`: test, mutation, dependency gate and the kind end-to-end test, on this repo's own self-hosted runner. **A pull request from a fork runs on GitHub-hosted `ubuntu-latest` instead**, so untrusted code never reaches a self-hosted runner. Workflow runs for outside contributors also need approval, and `ci.yaml` uses no secrets and never `pull_request_target`.
 - `build.yaml` (pushes to main only, self-hosted): builds and pushes the image (the Dockerfile re-runs the dependency gate on the exact tree it ships), checks the pushed image, then cuts a release.
 - `docker-release.yaml`: promotes the released commit's image to `X.Y.Z` and `X.Y`. Git tags are `vX.Y.Z`; image tags have no `v`.
 
