@@ -22,6 +22,21 @@ COPY scripts ./scripts
 COPY src ./src
 RUN npm run build
 
+# Mutation test, for CI only (`docker build --target mutation`): on the ARC
+# runner the job container is small (1 CPU / 512Mi) but builds run in its
+# Docker-in-Docker sidecar, which has room for Stryker. Never part of the
+# release image (the last stage below is).
+FROM ${NODE_IMAGE} AS mutation
+RUN apk add --no-cache openssl
+WORKDIR /src
+COPY package.json package-lock.json ./
+RUN npm ci --ignore-scripts --no-audit --no-fund
+COPY tsconfig.json stryker.config.json deps-baseline.json ./
+COPY scripts ./scripts
+COPY src ./src
+COPY test ./test
+RUN npx stryker run 2>&1 | tee /tmp/mutation.out; grep -q 'is greater than or equal to break threshold' /tmp/mutation.out
+
 FROM ${NODE_IMAGE} AS prod-deps
 WORKDIR /pkg
 COPY package.json package-lock.json ./

@@ -1,8 +1,15 @@
-# Tests for every PR and push. Runs on GitHub-hosted runners ON PURPOSE:
-# this repo is public, so a pull request from a fork runs untrusted code, and
-# that must never reach a self-hosted runner inside the cluster. Nothing here
-# needs a secret or the cluster. The Harbor image build (build.yaml) runs on
-# the self-hosted runner, and only for pushes to main.
+# Tests for every PR and push, on this repo's own ARC runner
+# (n8n-nodes-k8s-runner), with one exception that protects the cluster:
+#
+#   A pull request whose head is in ANOTHER repository (a fork of this public
+#   repo) runs on GitHub-hosted ubuntu-latest instead. Its code is untrusted
+#   and must never execute on a self-hosted runner inside the cluster (the
+#   build runners are privileged Docker-in-Docker pods).
+#
+# Also: repo setting "require approval for all external contributors" is on,
+# this workflow has read-only permissions and uses no secrets, and nothing
+# here uses pull_request_target. The Harbor image build (build.yaml) runs for
+# pushes to main only.
 name: ci
 
 on:
@@ -16,7 +23,7 @@ permissions:
 
 jobs:
   test:
-    runs-on: ubuntu-latest
+    runs-on: ${{ (github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository) && 'ubuntu-latest' || 'n8n-nodes-k8s-runner' }}
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v7
@@ -45,37 +52,38 @@ jobs:
           grep -qx 'DEPS-AUDIT-OK' audit.out
 
   mutation:
-    runs-on: ubuntu-latest
+    runs-on: ${{ (github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository) && 'ubuntu-latest' || 'n8n-nodes-k8s-runner' }}
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v7
+      # Runs as a docker build stage: on our runner that executes in the DinD
+      # sidecar (4 CPU / 16Gi), not the 512Mi job container, which Stryker
+      # outgrows. --no-cache-filter so it really re-runs every time.
+      - name: Mutation test (Stryker, break at 90%)
+        run: |
+          set -o pipefail
+          docker build --target mutation --no-cache-filter mutation --progress=plain . 2>&1 | tee mutation.out
+          grep -q 'is greater than or equal to break threshold' mutation.out
+
+  e2e:
+    runs-on: ${{ (github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository) && 'ubuntu-latest' || 'n8n-nodes-k8s-runner' }}
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+      # The e2e driver is a Node script; the ARC runner image has no Node.
       - uses: actions/setup-node@v7
         with:
           node-version: '26.12.1'
-      - run: npm ci --ignore-scripts --no-audit --no-fund
-      # Fails under the break threshold in stryker.config.json.
-      - name: Mutation test (Stryker)
-        run: |
-          set -o pipefail
-          npx stryker run 2>&1 | tee mutation.out
-          grep -q 'is greater than or equal to break threshold' mutation.out
-      - uses: actions/upload-artifact@v7
-        if: always()
-        with:
-          name: mutation-report
-          path: reports/mutation/
-
-  e2e:
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    steps:
-      - uses: actions/checkout@v7
       - name: Build the node-only image
         run: docker build -t n8n-nodes-k8s:ci .
       - name: Install kind
+        # No sudo: the ARC runner image does not need to have it.
         run: |
-          curl -fsSLo kind https://kind.sigs.k8s.io/dl/v0.33.0/kind-linux-amd64
-          chmod +x kind && sudo mv kind /usr/local/bin/kind
+          mkdir -p "$RUNNER_TEMP/bin"
+          curl -fsSLo "$RUNNER_TEMP/bin/kind" https://kind.sigs.k8s.io/dl/v0.33.0/kind-linux-amd64
+          chmod +x "$RUNNER_TEMP/bin/kind"
+          echo "$RUNNER_TEMP/bin" >> "$GITHUB_PATH"
+          command -v kubectl >/dev/null || { curl -fsSLo "$RUNNER_TEMP/bin/kubectl" "https://dl.k8s.io/release/v1.36.4/bin/linux/amd64/kubectl"; chmod +x "$RUNNER_TEMP/bin/kubectl"; }
       - name: Create a kind cluster
         run: kind create cluster --name e2e --image kindest/node:v1.36.4 --kubeconfig "$RUNNER_TEMP/kind.kubeconfig" --wait 120s
       # Stock n8n with the image's files in N8N_CUSTOM_EXTENSIONS runs real
