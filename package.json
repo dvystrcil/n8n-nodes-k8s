@@ -1,31 +1,29 @@
 {
-  "name": "@chaosimpact/n8n-nodes-k8s",
-  "version": "0.2.0",
-  "description": "n8n community node for Kubernetes cluster management",
+  "name": "@dvystrcil/n8n-nodes-k8s",
+  "version": "0.3.0",
+  "private": true,
+  "description": "n8n node for starting and polling Kubernetes Jobs built from suspended CronJob templates",
   "keywords": [
     "n8n-community-node-package"
   ],
   "license": "MIT",
-  "homepage": "",
   "author": {
-    "name": "HuPo"
+    "name": "HuPo (original), dvystrcil (fork)"
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/chaosimpact/n8n-nodes-k8s.git"
+    "url": "https://github.com/dvystrcil/n8n-nodes-k8s.git"
   },
   "engines": {
-    "node": ">=20.15"
+    "node": ">=22.12"
   },
-  "main": "index.js",
   "scripts": {
-    "build": "npx swc src -d dist --strip-leading-paths && npx ts-node ./scripts/copy.ts",
-    "build:watch": "npx ts-node ./scripts/copy.ts && npx swc src -d dist --strip-leading-paths --watch",
-    "dev": "tsc --watch",
-    "format": "prettier src/nodes src/credentials --write",
-    "lint": "eslint src/nodes src/credentials package.json",
-    "lintfix": "eslint src/nodes src/credentials package.json --fix",
-    "prepublishOnly": "npm run build && npm run lint -c .eslintrc.prepublish.js src/nodes src/credentials package.json"
+    "build": "rm -rf dist && tsc -p tsconfig.json && node scripts/copy-assets.mjs",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "npm run build && node --test --test-reporter=spec test/",
+    "test:unit": "node --test test/",
+    "mutate": "stryker run",
+    "audit:deps": "node scripts/audit-deps.mjs"
   },
   "files": [
     "dist"
@@ -33,28 +31,19 @@
   "n8n": {
     "n8nNodesApiVersion": 1,
     "credentials": [
-      "dist/credentials/KubernetesCredentialsApi.credentials.js"
+      "dist/credentials/KubernetesTokenApi.credentials.js"
     ],
     "nodes": [
-      "dist/nodes/Kubernetes/Kubernetes.node.js"
+      "dist/nodes/KubernetesBatch/KubernetesBatch.node.js"
     ]
   },
-  "devDependencies": {
-    "@swc/cli": "^0.7.7",
-    "@swc/core": "^1.12.9",
-    "@types/glob": "^8.1.0",
-    "@typescript-eslint/parser": "~8.32.0",
-    "eslint": "^8.57.0",
-    "eslint-plugin-n8n-nodes-base": "^1.16.3",
-    "gulp": "^5.0.0",
-    "prettier": "^3.6.2",
-    "ts-node": "^10.9.2",
-    "typescript": "^5.8.2"
-  },
   "dependencies": {
-    "@kubernetes/client-node": "^1.1.2"
+    "@kubernetes/client-node": "2.0.2"
   },
-  "peerDependencies": {
-    "n8n-workflow": "*"
+  "devDependencies": {
+    "@stryker-mutator/core": "10.1.1",
+    "@types/node": "26.6.6",
+    "n8n-workflow": "2.45.4",
+    "typescript": "7.0.2"
   }
 }
