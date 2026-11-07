@@ -56,21 +56,14 @@ jobs:
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v7
-      - uses: actions/setup-node@v7
-        with:
-          node-version: '26.12.1'
-      - run: npm ci --ignore-scripts --no-audit --no-fund
-      # Fails under the break threshold in stryker.config.json.
-      - name: Mutation test (Stryker)
+      # Runs as a docker build stage: on our runner that executes in the DinD
+      # sidecar (4 CPU / 16Gi), not the 512Mi job container, which Stryker
+      # outgrows. --no-cache-filter so it really re-runs every time.
+      - name: Mutation test (Stryker, break at 90%)
         run: |
           set -o pipefail
-          npx stryker run 2>&1 | tee mutation.out
+          docker build --target mutation --no-cache-filter mutation --progress=plain . 2>&1 | tee mutation.out
           grep -q 'is greater than or equal to break threshold' mutation.out
-      - uses: actions/upload-artifact@v7
-        if: always()
-        with:
-          name: mutation-report
-          path: reports/mutation/
 
   e2e:
     runs-on: ${{ (github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository) && 'ubuntu-latest' || 'n8n-nodes-k8s-runner' }}

@@ -236,8 +236,8 @@ const created = [];
 async function main() {
 	if (generic) {
 		console.log(`fixture: namespaces ${NS}, ${SA_NS}, ${OTHER_NS}; Role + VAP; templates ok, slow`);
-		docker(["pull", "-q", BUSYBOX]);
-		sh("kind", ["load", "docker-image", "--name", CLUSTER, BUSYBOX]);
+		// The kind node pulls busybox itself. (`kind load` exports every
+		// platform, which fails on a Docker store holding only one.)
 		genericFixture();
 	}
 	// A template the guard must refuse. Created by the ADMIN (the VAP only
