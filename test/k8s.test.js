@@ -1,9 +1,18 @@
 // Unit tests for the pure parts of the node (dist/, i.e. the shipped code).
-const { test } = require("node:test");
+const { test, after } = require("node:test");
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const os = require("node:os");
 const path = require("node:path");
+
+// Every temp dir a test makes is removed when the file ends: leaked ones once filled a laptop's /tmp inodes.
+const tmpDirs = [];
+after(() => { for (const d of tmpDirs) fs.rmSync(d, { recursive: true, force: true }); });
+function mkTmp(prefix) {
+	const d = fs.mkdtempSync(path.join(os.tmpdir(), prefix));
+	tmpDirs.push(d);
+	return d;
+}
 
 const k = require("../dist/nodes/KubernetesBatch/k8s.js");
 
@@ -408,7 +417,7 @@ test("errors: isNotFound is true for exactly HTTP 404", () => {
 const PEM = "-----BEGIN CERTIFICATE-----\nMIIBszCCAVmgAwIBAgIUQ==\n-----END CERTIFICATE-----\n";
 
 function tmpFile(content) {
-	const d = fs.mkdtempSync(path.join(os.tmpdir(), "k8s-node-test-"));
+	const d = mkTmp("k8s-node-test-");
 	const f = path.join(d, "ca.crt");
 	fs.writeFileSync(f, content);
 	return f;
