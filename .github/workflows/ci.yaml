@@ -34,17 +34,17 @@ jobs:
       - run: npm ci --ignore-scripts --no-audit --no-fund
       - run: npm run typecheck
       # The tests run with an empty TMPDIR, and anything they leave in it fails the step: leaked test dirs once filled
-      # a laptop's /tmp inodes.
+      # a laptop's /tmp inodes. The action also reads every .py/.sh for a mktemp/mkdtemp nobody removes.
+      # https://github.com/dvystrcil/tmp-cleanup-action
       - name: Unit tests (against the built dist/), leaving no temp dirs
+        uses: dvystrcil/tmp-cleanup-action@v1
+        with:
+          test-command: set -o pipefail; npm test 2>&1 | tee test.out
+          test-ignore: node-compile-cache   # Node's own cache: one dir, reused, not a leak
+      - name: Assert the unit tests ran and passed
         run: |
-          set -o pipefail
-          export TMPDIR="$RUNNER_TEMP/tests-tmp"; rm -rf "$TMPDIR"; mkdir -p "$TMPDIR"
-          npm test 2>&1 | tee test.out
           grep -Eq '^ℹ fail 0$' test.out
           grep -Eq '^ℹ pass [1-9][0-9]*$' test.out
-          left=$(ls -A "$TMPDIR" | grep -vx 'node-compile-cache' || true)   # Node's own cache: one dir, reused, not a leak
-          if [ -n "$left" ]; then echo "tests left these in TMPDIR:"; echo "$left" | head; exit 1; fi
-          echo "TMPDIR clean"
       # Dependency gate (fail-closed): the shipped tree must match
       # deps-baseline.json exactly. A dependency bump fails here until it is
       # re-baselined with `npm run audit:deps -- --update` in the same PR,
