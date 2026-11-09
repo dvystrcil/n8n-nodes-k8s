@@ -1,11 +1,20 @@
 // The dependency gate must FAIL on the changes it exists to catch. Each case
 // builds a small fake package root and runs the real script against it.
-const { test } = require("node:test");
+const { test, after } = require("node:test");
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const os = require("node:os");
 const path = require("node:path");
 const { spawnSync } = require("node:child_process");
+
+// Every temp dir a test makes is removed when the file ends: leaked ones once filled a laptop's /tmp inodes.
+const tmpDirs = [];
+after(() => { for (const d of tmpDirs) fs.rmSync(d, { recursive: true, force: true }); });
+function mkTmp(prefix) {
+	const d = fs.mkdtempSync(path.join(os.tmpdir(), prefix));
+	tmpDirs.push(d);
+	return d;
+}
 
 const SCRIPT = path.join(__dirname, "..", "scripts", "audit-deps.mjs");
 
@@ -18,7 +27,7 @@ function write(root, rel, content) {
 // A root with one prod dep (dep-a), one dev dep (dev-x), and a dist/ that
 // looks like the node: only client-node and node:fs are required.
 function fixture({ depCode = "module.exports = 1;\n", depLicense = "MIT", installScript = false, distCode, description } = {}) {
-	const root = fs.mkdtempSync(path.join(os.tmpdir(), "audit-deps-"));
+	const root = mkTmp("audit-deps-");
 	const lock = {
 		name: "fx",
 		lockfileVersion: 3,
