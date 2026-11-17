@@ -89,3 +89,72 @@ jobs:
         run: |
           docker buildx imagetools inspect \
             ${{ env.INTERNAL_REGISTRY }}/${{ env.PROJECT }}/${{ env.IMAGE_NAME }}:${{ steps.meta.outputs.version }}
+
+  # homelab#2320: merge = release = deploy. After promote (the tag must exist
+  # in Harbor), release-action's deploy step moves the newTag of
+  # harbor.sirddail.net/ai/n8n-nodes-k8s in dvystrcil/n8n-workflow: newTag lines only, every
+  # kustomize root rendered before/after (image-only diff), never a
+  # downgrade, a major goes to a PR, retried if main moves.
+  #
+  # Kill switch: repo variable AUTO_DEPLOY. `false` opens one PR
+  # (deploy/n8n-nodes-k8s-<ver>) instead of committing; committing to main needs the
+  # CICD App as a bypass actor on n8n-workflow's ruleset.
+  deploy:
+    needs: promote
+    runs-on: n8n-nodes-k8s-runner
+    permissions:
+      contents: read
+      id-token: write
+    # One deploy at a time; a pending newer release replaces an older pending
+    # one. An older release that loses a race finds main past it (noop).
+    concurrency:
+      group: deploy-dvystrcil/n8n-workflow
+      cancel-in-progress: false
+    steps:
+      # One named secret per step, never the whole store.
+      - name: Fetch CICD_APP_CLIENT_ID from Infisical
+        uses: Infisical/secrets-action@d2e351f16c6ca20d17c85e6c992e04bdeb64e87d # v1.0.18
+        with:
+          method: oidc
+          identity-id: ${{ vars.INFISICAL_IDENTITY_ID }}
+          env-slug: prod
+          project-slug: homelab-bz-gt
+          secret-path: /
+          secret-name: CICD_APP_CLIENT_ID
+          export-type: env
+          domain: http://infisical-infisical-standalone-infisical.infisical.svc.cluster.local:8080
+
+      - name: Fetch CICD_APP_PRIVATE_KEY from Infisical
+        uses: Infisical/secrets-action@d2e351f16c6ca20d17c85e6c992e04bdeb64e87d # v1.0.18
+        with:
+          method: oidc
+          identity-id: ${{ vars.INFISICAL_IDENTITY_ID }}
+          env-slug: prod
+          project-slug: homelab-bz-gt
+          secret-path: /
+          secret-name: CICD_APP_PRIVATE_KEY
+          export-type: env
+          domain: http://infisical-infisical-standalone-infisical.infisical.svc.cluster.local:8080
+
+      - name: Generate app token
+        # The CICD GitHub App, scoped to the repo it writes.
+        uses: actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510 # v3
+        id: app-token
+        with:
+          client-id: ${{ env.CICD_APP_CLIENT_ID }}
+          private-key: ${{ env.CICD_APP_PRIVATE_KEY }}
+          owner: ${{ github.repository_owner }}
+          repositories: n8n-workflow
+
+      - name: Deploy to n8n-workflow
+        id: deploy
+        uses: dvystrcil/release-action@v1
+        with:
+          token: ${{ steps.app-token.outputs.token }}
+          create-release: false
+          version: ${{ github.event.release.tag_name }}
+          deploy-repo: dvystrcil/n8n-workflow
+          deploy-images: harbor.sirddail.net/ai/n8n-nodes-k8s
+          auto-deploy: ${{ vars.AUTO_DEPLOY }}
+
+      - run: echo "deploy-result=${{ steps.deploy.outputs.deploy-result }}"
