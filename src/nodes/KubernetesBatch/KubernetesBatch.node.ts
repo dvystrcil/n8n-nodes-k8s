@@ -138,7 +138,8 @@ export class KubernetesBatch implements INodeType {
 				name: "activeDeadlineSeconds",
 				type: "number",
 				default: 0,
-				description: "Override the template's activeDeadlineSeconds. 0 keeps the template's.",
+				description:
+					"Override the template's activeDeadlineSeconds. 0 keeps the template's. If the template sets the pod's (spec.template.spec), this replaces that run limit, and the Job's keeps the template's margin over it for time spent Pending.",
 				...showFor("createJobFromCronJob"),
 			},
 			{
@@ -279,6 +280,9 @@ async function createJobFromCronJob(
 		uid: job.metadata!.uid!,
 		cronJob: o.cronJobName,
 		suspended: job.spec!.suspend === true,
+		// The Job's deadline as created, so a caller polling it knows how long
+		// it may take (time spent Pending included). null when it has none.
+		activeDeadlineSeconds: job.spec!.activeDeadlineSeconds ?? null,
 	};
 }
 

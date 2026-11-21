@@ -115,7 +115,21 @@ export function buildJobFromCronJob(cronJob: any, o: JobOverrides): any {
 		if (!Number.isInteger(d) || d <= 0) {
 			throw new Error(`activeDeadlineSeconds must be a positive integer (got ${d})`);
 		}
-		spec.activeDeadlineSeconds = d;
+		// Two deadlines can bound a Job. The pod's (spec.template.spec) is
+		// counted by the kubelet from the pod's start; the Job's from its
+		// creation, time spent Pending included. When the template sets the
+		// pod's, it is the run limit and the override replaces it; the Job's
+		// keeps the template's margin over it (Job - pod) for waiting in
+		// Pending. With only a Job deadline, the override replaces that.
+		const pod = spec.template.spec;
+		if (pod.activeDeadlineSeconds !== undefined) {
+			if (spec.activeDeadlineSeconds !== undefined) {
+				spec.activeDeadlineSeconds = d + (spec.activeDeadlineSeconds - pod.activeDeadlineSeconds);
+			}
+			pod.activeDeadlineSeconds = d;
+		} else {
+			spec.activeDeadlineSeconds = d;
+		}
 	}
 	if (o.suspend === true) spec.suspend = true;
 

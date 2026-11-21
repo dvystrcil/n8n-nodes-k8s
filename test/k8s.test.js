@@ -204,6 +204,40 @@ test("build: activeDeadlineSeconds override, and bad values refused", () => {
 	assert.equal(k.buildJobFromCronJob(cronJob(), { jobName: "j" }).spec.activeDeadlineSeconds, 600);
 });
 
+test("build: with a pod deadline in the template, the override is the run limit and the wait bound is kept", () => {
+	// The pod's activeDeadlineSeconds counts from the pod's start; the Job's
+	// counts from creation, time spent Pending included. A template that sets
+	// both holds a wait bound (Job - pod = 7200 here); the override moves the
+	// pod's and keeps that bound on top of it for the Job's.
+	const cj = cronJob();
+	cj.spec.jobTemplate.spec.activeDeadlineSeconds = 10800;
+	cj.spec.jobTemplate.spec.template.spec.activeDeadlineSeconds = 3600;
+	const job = k.buildJobFromCronJob(cj, { jobName: "j", activeDeadlineSeconds: 900 });
+	assert.equal(job.spec.template.spec.activeDeadlineSeconds, 900);
+	assert.equal(job.spec.activeDeadlineSeconds, 900 + 7200);
+	// no override: both as the template has them
+	const plain = k.buildJobFromCronJob(cj, { jobName: "j" });
+	assert.equal(plain.spec.template.spec.activeDeadlineSeconds, 3600);
+	assert.equal(plain.spec.activeDeadlineSeconds, 10800);
+	// the template is not changed
+	assert.equal(cj.spec.jobTemplate.spec.template.spec.activeDeadlineSeconds, 3600);
+});
+
+test("build: a template with only a Job deadline gets no pod deadline from an override", () => {
+	const job = k.buildJobFromCronJob(cronJob(), { jobName: "j", activeDeadlineSeconds: 900 });
+	assert.equal(job.spec.activeDeadlineSeconds, 900);
+	assert.equal(job.spec.template.spec.activeDeadlineSeconds, undefined);
+});
+
+test("build: a pod deadline with no Job deadline: the override sets only the pod's", () => {
+	const cj = cronJob();
+	delete cj.spec.jobTemplate.spec.activeDeadlineSeconds;
+	cj.spec.jobTemplate.spec.template.spec.activeDeadlineSeconds = 3600;
+	const job = k.buildJobFromCronJob(cj, { jobName: "j", activeDeadlineSeconds: 900 });
+	assert.equal(job.spec.template.spec.activeDeadlineSeconds, 900);
+	assert.equal(job.spec.activeDeadlineSeconds, undefined);
+});
+
 test("build: suspend true creates a suspended Job; false leaves the template's value", () => {
 	assert.equal(k.buildJobFromCronJob(cronJob(), { jobName: "j", suspend: true }).spec.suspend, true);
 	assert.equal(k.buildJobFromCronJob(cronJob(), { jobName: "j", suspend: false }).spec.suspend, undefined);

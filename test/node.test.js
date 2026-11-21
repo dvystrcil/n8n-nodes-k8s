@@ -120,7 +120,10 @@ const createParams = {
 test("create: reads the template, posts a plain Job, never writes the CronJob", async () => {
 	createRoutes();
 	const [[item]] = await run(createParams);
-	assert.deepEqual(item.json, { name: "render-1", namespace: "batch", uid: "job-uid", cronJob: "render", suspended: true });
+	// activeDeadlineSeconds: the created Job's, so a caller polling it knows how long it may take, Pending included
+	assert.deepEqual(item.json, {
+		name: "render-1", namespace: "batch", uid: "job-uid", cronJob: "render", suspended: true, activeDeadlineSeconds: 600,
+	});
 	assert.deepEqual(item.pairedItem, { item: 0 });
 	assert.deepEqual(requests.map((r) => `${r.method} ${r.path}`), [
 		"GET /apis/batch/v1/namespaces/batch/cronjobs/render",
@@ -205,8 +208,9 @@ test("create: only the required parameters is a Job straight from the template",
 
 test("create: a deadline override is applied", async () => {
 	createRoutes();
-	await run({ ...createParams, activeDeadlineSeconds: 7 });
+	const [[item]] = await run({ ...createParams, activeDeadlineSeconds: 7 });
 	assert.equal(requests[1].body.spec.activeDeadlineSeconds, 7);
+	assert.equal(item.json.activeDeadlineSeconds, 7);
 });
 
 test("create: a negative deadline is refused", async () => {
